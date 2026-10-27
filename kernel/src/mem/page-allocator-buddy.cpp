@@ -59,7 +59,6 @@ void page_allocator_buddy::dump() const
 			continue;
 		}
 
-		// Get the pointer to the first free page in the free list.
 		pfn_t current_free_page = free_list_[order];
 
 		// While there /is/ currently a free page in the list...
@@ -202,7 +201,9 @@ void page_allocator_buddy::split_block(order_t order, pfn_t block_start) { panic
  * @param order The order in which to merge buddies.
  * @param either_buddy Either buddy page in the free block.
  */
-void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) { panic("TODO"); }
+void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) { 
+	
+ }
 
 /************************************************************************************/
 /* The following functions are part of the public API, and so /must/ be implemented */
@@ -216,7 +217,40 @@ void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) { pa
  * @param range_start The first page in the range.
  * @param page_count The number of pages in the range.
  */
-void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count) { panic("TODO"); }
+void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count) 
+{ 
+	// try to allocate the page descriptor first to only the first page
+	// use the method insert_free_block
+
+	// set up our variables
+	pfn_t current = range_start;
+	u64 remaining = page_count;
+
+	while (remaining > 0) {
+		// Try and group together as many free pages as we can, at the highest order that we can
+		order_t order = LAST_ORDER; // 16
+		// find the appropriate order
+		while (order > 0 && (!block_aligned(order, current) || (1ull << order) > remaining)) {
+			order--;
+		}
+
+		// now the appropriate order has been found, we should assign all the pages that fall into that a block
+		insert_free_block(order, current);
+
+		// update current and remaining ready for next iteration
+		current += (1ull << order); 
+		remaining -= (1ull << order);
+
+		pfn_t head = free_list_[order];
+
+		if (metadata(head)->has_next_free()) {
+			merge_buddies(order, head);
+		}
+
+		// Update the number of free pages accordingly
+		free_pages_ += (1ull << order);
+	}
+}
 
 /**
  * @brief Allocates pages, using the buddy algorithm.
@@ -243,4 +277,4 @@ page_allocator_error page_allocator_buddy::free_pages(pfn_t range_start, order_t
  * ** You are required to implement this function **
  * @return page_allocator_stats A structure containing the state of the allocator.
  */
-page_allocator_stats page_allocator_buddy::get_stats() const { panic("TODO"); }
+page_allocator_stats page_allocator_buddy::get_stats() const { return page_allocator_stats{used_pages_, free_pages_}; }

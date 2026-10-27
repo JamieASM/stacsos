@@ -44,5 +44,8 @@ private:
 
 	void split_block(order_t order, pfn_t block_start);
 	void merge_buddies(order_t order, pfn_t either_buddy);
+
+	u64 free_pages_ = 0;
+	u64 used_pages_ = 0;
 };
 } // namespace stacsos::kernel::mem
