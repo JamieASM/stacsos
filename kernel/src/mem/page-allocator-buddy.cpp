@@ -201,9 +201,36 @@ void page_allocator_buddy::split_block(order_t order, pfn_t block_start) { panic
  * @param order The order in which to merge buddies.
  * @param either_buddy Either buddy page in the free block.
  */
-void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) { 
-	
- }
+void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) 
+{ 
+	assert(order < LAST_ORDER);
+
+	u64 current_page_count = (1 << order);
+	pfn_t target = either_buddy ^ current_page_count; // xor from lectures 
+
+	// find the buddy (if there is one)
+	bool found = false;
+
+	for (pfn_t current = free_list_[order]; current != INVALID_PFN; current = metadata(current)->next_free) {
+		if (current == target) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) { return; }
+
+	pfn_t smaller = (either_buddy < target ? either_buddy : target);
+
+
+	remove_free_block(order, target);
+	remove_free_block(order, either_buddy);
+	insert_free_block(order + 1, smaller);
+
+	if (order + 1 < LAST_ORDER) {
+		merge_buddies(order + 1, smaller);
+	}
+}
 
 /************************************************************************************/
 /* The following functions are part of the public API, and so /must/ be implemented */
@@ -237,15 +264,12 @@ void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count)
 		// now the appropriate order has been found, we should assign all the pages that fall into that a block
 		insert_free_block(order, current);
 
+		// merge buddies if possible
+		merge_buddies(order, current);
+
 		// update current and remaining ready for next iteration
 		current += (1ull << order); 
 		remaining -= (1ull << order);
-
-		pfn_t head = free_list_[order];
-
-		if (metadata(head)->has_next_free()) {
-			merge_buddies(order, head);
-		}
 
 		// Update the number of free pages accordingly
 		free_pages_ += (1ull << order);
