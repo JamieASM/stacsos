@@ -192,7 +192,19 @@ void page_allocator_buddy::remove_free_block(order_t order, pfn_t block_start)
  * @param order The order in which the free block current exists.
  * @param block_start The starting page of the block to be split.
  */
-void page_allocator_buddy::split_block(order_t order, pfn_t block_start) { panic("TODO"); }
+void page_allocator_buddy::split_block(order_t order, pfn_t block_start) 
+{  
+	// TODO: needs verifying that it works
+	assert(order >= 0);
+
+	order_t new_order = order - 1;
+	pfn_t seccond_block = block_start ^ (1 << new_order);
+
+	remove_free_block(order, block_start);
+
+	insert_free_block(new_order, block_start);
+	insert_free_block(new_order, seccond_block);
+}
 
 /**
  * @brief Merges two buddy-adjacent free blocks in one order, into a block in the next higher order.
@@ -205,8 +217,7 @@ void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy)
 { 
 	assert(order < LAST_ORDER);
 
-	u64 current_page_count = (1 << order);
-	pfn_t target = either_buddy ^ current_page_count; // xor from lectures 
+	pfn_t target = either_buddy ^ (1 << order); // xor from lectures 
 
 	// find the buddy (if there is one)
 	bool found = false;
