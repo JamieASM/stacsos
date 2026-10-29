@@ -188,7 +188,6 @@ void page_allocator_buddy::remove_free_block(order_t order, pfn_t block_start)
 /**
  * @brief Splits a free block of pages from a given order, into two halves into a lower order.
  *
- * ** You are required to implement this function **
  * @param order The order in which the free block current_order exists.
  * @param block_start The starting page of the block to be split.
  */
@@ -214,7 +213,10 @@ void page_allocator_buddy::split_block(order_t order, pfn_t block_start)
  */
 void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) 
 { 
-	assert(order >= 0 && order < LAST_ORDER);
+	// TODO: currently able to call this for order 16 -- how can we handle order 16
+	assert(order >= 0 && order <= LAST_ORDER);
+
+	if (order == LAST_ORDER) { return; }
 
 	pfn_t target = either_buddy ^ (1 << order); // xor from lectures 
 
@@ -263,7 +265,7 @@ void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count)
 		// Try and group together as many free pages as we can, at the highest order that we can
 		order_t order = LAST_ORDER; // 16
 		// find the appropriate order
-		while (order > 0 && (!block_aligned(order, current_order) || (1ull << order) > remaining)) {
+		while (order > 0 && (!block_aligned(order, current_order) || (1 << order) > remaining)) {
 			order--;
 		}
 
@@ -285,7 +287,6 @@ void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count)
 /**
  * @brief Allocates pages, using the buddy algorithm.
  *
- * ** You are required to implement this function **
  * @param order The order of pages to allocate (i.e. 2^order number of pages)
  * @param flags Any allocation flags to take into account.
  * @return page* The starting page of the block that was allocated, or nullptr if the allocation cannot be satisfied.
@@ -295,17 +296,15 @@ page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_
 	assert(order >= 0 && order <= LAST_ORDER);
 
 	u64 page_count = 1 << order;
-	order_t current_order = order;
 
-	while (current_order <= LAST_ORDER) {
-
+	for (order_t current_order = order; current_order <= LAST_ORDER; current_order++) {
 		pfn_t current_page = free_list_[current_order];
 
 		// Is there a free page in that order?
 		if (current_page != INVALID_PFN) {
 
 			// break them down until we are back to the original order
-			for (order_t i = current_order; i < order; i--) {
+			for (order_t i = current_order; i > order; i--) {
 				split_block(i, current_page);
 			}
 
@@ -322,9 +321,6 @@ page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_
 
 			return page_allocation_result::ok(current_page);
 		}
-
-		// try the next order
-		current_order++;
 	}
 
 	// otherwise, there is no free pages to allocate
@@ -338,7 +334,10 @@ page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_
  * @param block_start The starting page of the block to be freed.
  * @param order The order of the block being freed.
  */
-page_allocator_error page_allocator_buddy::free_pages(pfn_t range_start, order_t order) { panic("TODO"); }
+page_allocator_error page_allocator_buddy::free_pages(pfn_t range_start, order_t order) 
+{ 
+	
+}
 
 /**
  * @brief Returns the current_order state of the page allocator.
