@@ -293,7 +293,9 @@ void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count)
  */
 page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_allocation_flags flags) 
 { 
-	assert(order >= 0 && order <= LAST_ORDER);
+	if (order < 0 and order > LAST_ORDER) {
+		page_allocation_result::error(page_allocator_error::order_out_of_range);
+	}
 
 	u64 page_count = 1 << order;
 
@@ -336,7 +338,24 @@ page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_
  */
 page_allocator_error page_allocator_buddy::free_pages(pfn_t range_start, order_t order) 
 { 
-	
+	if (order < 0 || order > LAST_ORDER) {
+		return page_allocator_error::order_out_of_range;
+	}
+
+	u64 page_count = 1 << order;
+
+	if (page_count <= used_pages_ && range_start != INVALID_PFN && block_aligned(order, range_start)) {
+		insert_free_block(order, range_start);
+		merge_buddies(order, range_start);
+
+		used_pages_ -= page_count;
+		free_pages_ += page_count;
+
+		return page_allocator_error::none;
+	}
+
+	// not too sure if this is the most appropriate
+	return page_allocator_error::out_of_memory;
 }
 
 /**

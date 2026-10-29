@@ -1,0 +1,389 @@
+******************************************
+*** PAGE ALLOCATOR SELF TEST ACTIVATED ***
+******************************************
+(1) Initial state
+*** buddy page allocator - free list ***
+[00] (empty)
+[01] (empty)
+[02] (empty)
+[03] (empty)
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=0, used=0
+(2) Test merge propagation for insert_free_pages
+  insert start=2, count=2
+*** buddy page allocator - free list ***
+[00] (empty)
+[01] 2--3 
+[02] (empty)
+[03] (empty)
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=2, used=0
+  insert start=1, count=1
+*** buddy page allocator - free list ***
+[00] 1 
+[01] 2--3 
+[02] (empty)
+[03] (empty)
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=3, used=0
+  insert start=0, count=1
+*** buddy page allocator - free list ***
+[00] (empty)
+[01] (empty)
+[02] 0--3 
+[03] (empty)
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=4, used=0
+  allocate
+*** buddy page allocator - free list ***
+[00] (empty)
+[01] (empty)
+[02] (empty)
+[03] (empty)
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=0, used=4
+(3) Insert power-of-two block (PFN=0, COUNT=8)
+*** buddy page allocator - free list ***
+[00] (empty)
+[01] (empty)
+[02] (empty)
+[03] 0--7 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=8, used=4
+(4) Insert odd block (PFN=13, COUNT=3)
+*** buddy page allocator - free list ***
+[00] 13 
+[01] 14--15 
+[02] (empty)
+[03] 0--7 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=11, used=4
+(5) Insert another block (PFN=1300, COUNT=7)
+*** buddy page allocator - free list ***
+[00] 13 1306 
+[01] 14--15 1304--1305 
+[02] 1300--1303 
+[03] 0--7 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=18, used=4
+(6) Allocate page (ORDER=0)
+  allocated pfn=d
+*** buddy page allocator - free list ***
+[00] 1306 
+[01] 14--15 1304--1305 
+[02] 1300--1303 
+[03] 0--7 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=17, used=5
+(7) Free page (PFN=d, ORDER=0)
+*** buddy page allocator - free list ***
+[00] 13 1306 
+[01] 14--15 1304--1305 
+[02] 1300--1303 
+[03] 0--7 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=18, used=4
+(8) Insert pages (PFN=20, COUNT=20)
+*** buddy page allocator - free list ***
+[00] 13 1306 
+[01] 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 0--7 24--31 32--39 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=38, used=4
+(9) Allocate page (ORDER=1)
+  allocated pfn=e
+*** buddy page allocator - free list ***
+[00] 13 1306 
+[01] 1304--1305 
+[02] 20--23 1300--1303 
+[03] 0--7 24--31 32--39 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=36, used=6
+(10) Free page (PFN=e, ORDER=1)
+*** buddy page allocator - free list ***
+[00] 13 1306 
+[01] 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 0--7 24--31 32--39 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=38, used=4
+(11) Insert one page (PFN=2, ORDER=0)
+*** buddy page allocator - free list ***
+[00] 2 13 1306 
+[01] 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 0--7 24--31 32--39 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=39, used=4
+(12) Allocate page (ORDER=3)
+  allocated pfn=0
+*** buddy page allocator - free list ***
+[00] 2 13 1306 
+[01] 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 24--31 32--39 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=31, used=12
+(13) Free one page in middle of allocation (PFN=1, ORDER=0)
+*** buddy page allocator - free list ***
+[00] 1 2 13 1306 
+[01] 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 24--31 32--39 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=32, used=11
+(14) Free one page at start of allocation (PFN=0, ORDER=0)
+*** buddy page allocator - free list ***
+[00] 2 13 1306 
+[01] 0--1 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 24--31 32--39 
+[04] (empty)
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=33, used=10
+(15) Insert page to trigger higher merge (PFN=40, ORDER=3)
+*** buddy page allocator - free list ***
+[00] 2 13 1306 
+[01] 0--1 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 24--31 
+[04] 32--47 
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=41, used=10
+(16) Allocate too big
+good!! allocation failed with correct error code
+*** buddy page allocator - free list ***
+[00] 2 13 1306 
+[01] 0--1 14--15 1304--1305 
+[02] 20--23 1300--1303 
+[03] 24--31 
+[04] 32--47 
+[05] (empty)
+[06] (empty)
+[07] (empty)
+[08] (empty)
+[09] (empty)
+[10] (empty)
+[11] (empty)
+[12] (empty)
+[13] (empty)
+[14] (empty)
+[15] (empty)
+[16] (empty)
+stats: free=41, used=10
+*** SELF TEST COMPLETE - SYSTEM TERMINATED ***
