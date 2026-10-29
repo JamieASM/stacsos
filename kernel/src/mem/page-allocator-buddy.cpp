@@ -40,7 +40,7 @@ struct page_metadata {
 static inline page_metadata *metadata(pfn_t pfn) { return (page_metadata *)page::get_from_pfn(pfn).base_address_ptr(); }
 
 /**
- * @brief Dumps out (via the debugging routines) the current state of the buddy allocator's free lists.
+ * @brief Dumps out (via the debugging routines) the current_order state of the buddy allocator's free lists.
  */
 void page_allocator_buddy::dump() const
 {
@@ -59,28 +59,28 @@ void page_allocator_buddy::dump() const
 			continue;
 		}
 
-		pfn_t current_free_page = free_list_[order];
+		pfn_t current_order_free_page = free_list_[order];
 
-		// While there /is/ currently a free page in the list...
+		// While there /is/ current_orderly a free page in the list...
 		do {
 			if (order == 0) {
 				// If this is order-0, then there's only one page in the free block, so no need
 				// to print out a range.
-				dprintf("%lu ", current_free_page);
+				dprintf("%lu ", current_order_free_page);
 			} else {
 				// Otherwise, print out the extents of this free block, using the PFN of the
 				// starting page, up to and INCLUDING the PFN of the last page in the block.
-				dprintf("%lu--%lu ", current_free_page, current_free_page + ((1 << order) - 1));
+				dprintf("%lu--%lu ", current_order_free_page, current_order_free_page + ((1 << order) - 1));
 			}
 
 			// Break out of the loop if there isn't a next page in the list.
-			if (!metadata(current_free_page)->has_next_free()) {
+			if (!metadata(current_order_free_page)->has_next_free()) {
 				break;
 			}
 
 			// Advance to the next page, by interpreting the free page as holding metadata,
 			// and reading the appropriate field.
-			current_free_page = metadata(current_free_page)->next_free;
+			current_order_free_page = metadata(current_order_free_page)->next_free;
 		} while (true);
 
 		// New line for the next order.
@@ -121,12 +121,12 @@ void page_allocator_buddy::insert_free_block(order_t order, pfn_t block_start)
 		metadata(block_start)->next_free = INVALID_PFN;
 	} else {
 		// Otherwise, iterate until we find the right position.
-		pfn_t current = free_list_[order];
+		pfn_t current_order = free_list_[order];
 		pfn_t prev = INVALID_PFN;
 		do {
-			if (current != INVALID_PFN && block_start > current) {
-				prev = current;
-				current = metadata(current)->next_free;
+			if (current_order != INVALID_PFN && block_start > current_order) {
+				prev = current_order;
+				current_order = metadata(current_order)->next_free;
 			} else {
 				// And, once we're in the right place, insert the block.
 				if (prev == INVALID_PFN) {
@@ -135,7 +135,7 @@ void page_allocator_buddy::insert_free_block(order_t order, pfn_t block_start)
 					metadata(prev)->next_free = block_start;
 				}
 
-				metadata(block_start)->next_free = current;
+				metadata(block_start)->next_free = current_order;
 				break;
 			}
 		} while (1);
@@ -156,28 +156,28 @@ void page_allocator_buddy::remove_free_block(order_t order, pfn_t block_start)
 	// Assert that the starting page in the block is aligned to the requested order.
 	assert(block_aligned(order, block_start));
 
-	pfn_t current = free_list_[order];
+	pfn_t current_order = free_list_[order];
 	pfn_t prev = INVALID_PFN;
 
 	// Loop through blocks in the free list, until we find the one we want.
-	while (current != block_start) {
-		prev = current;
-		current = metadata(current)->next_free;
+	while (current_order != block_start) {
+		prev = current_order;
+		current_order = metadata(current_order)->next_free;
 	}
 
 	// Check that we /actually/ found the one we want.
-	if (current != block_start) {
+	if (current_order != block_start) {
 		panic("block not in free list");
 	}
 
 	// Remove from the list (taking care to modify the correct slot).
 	if (prev == INVALID_PFN) {
-		free_list_[order] = metadata(current)->next_free;
+		free_list_[order] = metadata(current_order)->next_free;
 	} else {
-		metadata(prev)->next_free = metadata(current)->next_free;
+		metadata(prev)->next_free = metadata(current_order)->next_free;
 	}
 
-	metadata(current)->next_free = INVALID_PFN;
+	metadata(current_order)->next_free = INVALID_PFN;
 }
 
 /*************************************************************************************/
@@ -189,7 +189,7 @@ void page_allocator_buddy::remove_free_block(order_t order, pfn_t block_start)
  * @brief Splits a free block of pages from a given order, into two halves into a lower order.
  *
  * ** You are required to implement this function **
- * @param order The order in which the free block current exists.
+ * @param order The order in which the free block current_order exists.
  * @param block_start The starting page of the block to be split.
  */
 void page_allocator_buddy::split_block(order_t order, pfn_t block_start) 
@@ -209,21 +209,20 @@ void page_allocator_buddy::split_block(order_t order, pfn_t block_start)
 /**
  * @brief Merges two buddy-adjacent free blocks in one order, into a block in the next higher order.
  *
- * ** You are required to implement this function **
  * @param order The order in which to merge buddies.
  * @param either_buddy Either buddy page in the free block.
  */
 void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) 
 { 
-	assert(order < LAST_ORDER);
+	assert(order >= 0 && order < LAST_ORDER);
 
 	pfn_t target = either_buddy ^ (1 << order); // xor from lectures 
 
 	// find the buddy (if there is one)
 	bool found = false;
 
-	for (pfn_t current = free_list_[order]; current != INVALID_PFN; current = metadata(current)->next_free) {
-		if (current == target) {
+	for (pfn_t current_order = free_list_[order]; current_order != INVALID_PFN; current_order = metadata(current_order)->next_free) {
+		if (current_order == target) {
 			found = true;
 			break;
 		}
@@ -250,40 +249,36 @@ void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy)
 /**
  * @brief Inserts pages that are known to be free into the buddy allocator.
  *
- * ** You are required to implement this function **
  *
  * @param range_start The first page in the range.
  * @param page_count The number of pages in the range.
  */
 void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count) 
 { 
-	// try to allocate the page descriptor first to only the first page
-	// use the method insert_free_block
-
 	// set up our variables
-	pfn_t current = range_start;
+	pfn_t current_order = range_start;
 	u64 remaining = page_count;
 
 	while (remaining > 0) {
 		// Try and group together as many free pages as we can, at the highest order that we can
 		order_t order = LAST_ORDER; // 16
 		// find the appropriate order
-		while (order > 0 && (!block_aligned(order, current) || (1ull << order) > remaining)) {
+		while (order > 0 && (!block_aligned(order, current_order) || (1ull << order) > remaining)) {
 			order--;
 		}
 
 		// now the appropriate order has been found, we should assign all the pages that fall into that a block
-		insert_free_block(order, current);
+		insert_free_block(order, current_order);
 
 		// merge buddies if possible
-		merge_buddies(order, current);
+		merge_buddies(order, current_order);
 
-		// update current and remaining ready for next iteration
-		current += (1ull << order); 
-		remaining -= (1ull << order);
+		// update current_order and remaining ready for next iteration
+		current_order += (1 << order); 
+		remaining -= (1 << order);
 
 		// Update the number of free pages accordingly
-		free_pages_ += (1ull << order);
+		free_pages_ += (1 << order);
 	}
 }
 
@@ -295,7 +290,46 @@ void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count)
  * @param flags Any allocation flags to take into account.
  * @return page* The starting page of the block that was allocated, or nullptr if the allocation cannot be satisfied.
  */
-page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_allocation_flags flags) { panic("TODO"); }
+page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_allocation_flags flags) 
+{ 
+	assert(order >= 0 && order <= LAST_ORDER);
+
+	u64 page_count = 1 << order;
+	order_t current_order = order;
+
+	while (current_order <= LAST_ORDER) {
+
+		pfn_t current_page = free_list_[current_order];
+
+		// Is there a free page in that order?
+		if (current_page != INVALID_PFN) {
+
+			// break them down until we are back to the original order
+			for (order_t i = current_order; i < order; i--) {
+				split_block(i, current_page);
+			}
+
+			remove_free_block(order, current_page);
+
+			// update stats
+			free_pages_ -= page_count;
+			used_pages_ += page_count;
+
+			// there because its there in the linear allocator
+			if ((flags & page_allocation_flags::zero) == page_allocation_flags::zero) {
+				memops::pzero(page::get_from_pfn(current_page).base_address_ptr(), page_count);
+			}
+
+			return page_allocation_result::ok(current_page);
+		}
+
+		// try the next order
+		current_order++;
+	}
+
+	// otherwise, there is no free pages to allocate
+	return page_allocation_result::error(page_allocator_error::out_of_memory);
+}
 
 /**
  * @brief Frees previously allocated pages, using the buddy algorithm.
@@ -307,9 +341,8 @@ page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_
 page_allocator_error page_allocator_buddy::free_pages(pfn_t range_start, order_t order) { panic("TODO"); }
 
 /**
- * @brief Returns the current state of the page allocator.
+ * @brief Returns the current_order state of the page allocator.
  *
- * ** You are required to implement this function **
  * @return page_allocator_stats A structure containing the state of the allocator.
  */
 page_allocator_stats page_allocator_buddy::get_stats() const { return page_allocator_stats{used_pages_, free_pages_}; }
