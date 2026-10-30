@@ -193,7 +193,6 @@ void page_allocator_buddy::remove_free_block(order_t order, pfn_t block_start)
  */
 void page_allocator_buddy::split_block(order_t order, pfn_t block_start) 
 {  
-	// TODO: needs verifying that it works
 	assert(order >= 0);
 
 	order_t new_order = order - 1;
@@ -213,7 +212,6 @@ void page_allocator_buddy::split_block(order_t order, pfn_t block_start)
  */
 void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy) 
 { 
-	// TODO: currently able to call this for order 16 -- how can we handle order 16
 	assert(order >= 0 && order <= LAST_ORDER);
 
 	if (order == LAST_ORDER) { return; }
@@ -257,29 +255,24 @@ void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy)
  */
 void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count) 
 { 
-	// set up our variables
-	pfn_t current_order = range_start;
-	u64 remaining = page_count;
-
-	while (remaining > 0) {
+	while (page_count > 0) {
 		// Try and group together as many free pages as we can, at the highest order that we can
-		order_t order = LAST_ORDER; // 16
+		order_t order = LAST_ORDER;
+
 		// find the appropriate order
-		while (order > 0 && (!block_aligned(order, current_order) || (1 << order) > remaining)) {
+		while (order > 0 && (!block_aligned(order, range_start) || (1 << order) > page_count)) {
 			order--;
 		}
 
 		// now the appropriate order has been found, we should assign all the pages that fall into that a block
-		insert_free_block(order, current_order);
+		insert_free_block(order, range_start);
 
 		// merge buddies if possible
-		merge_buddies(order, current_order);
+		merge_buddies(order, range_start);
 
-		// update current_order and remaining ready for next iteration
-		current_order += (1 << order); 
-		remaining -= (1 << order);
-
-		// Update the number of free pages accordingly
+		// update range_start, page_count and stats ready for next iteration
+		range_start += (1 << order); 
+		page_count -= (1 << order);
 		free_pages_ += (1 << order);
 	}
 }
@@ -294,7 +287,7 @@ void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count)
 page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_allocation_flags flags) 
 { 
 	if (order < 0 and order > LAST_ORDER) {
-		page_allocation_result::error(page_allocator_error::order_out_of_range);
+		return page_allocation_result::error(page_allocator_error::order_out_of_range);
 	}
 
 	u64 page_count = 1 << order;
@@ -316,7 +309,7 @@ page_allocation_result page_allocator_buddy::allocate_pages(order_t order, page_
 			free_pages_ -= page_count;
 			used_pages_ += page_count;
 
-			// there because its there in the linear allocator
+			// taken from page-allocator-linear.cpp
 			if ((flags & page_allocation_flags::zero) == page_allocation_flags::zero) {
 				memops::pzero(page::get_from_pfn(current_page).base_address_ptr(), page_count);
 			}
