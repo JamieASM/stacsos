@@ -45,6 +45,8 @@ private:
 	void split_block(order_t order, pfn_t block_start);
 	void merge_buddies(order_t order, pfn_t either_buddy);
 
+	bool is_overlapping(order_t order, pfn_t block_start);
+
 	u64 free_pages_ = 0;
 	u64 used_pages_ = 0;
 };

@@ -255,6 +255,7 @@ void page_allocator_buddy::merge_buddies(order_t order, pfn_t either_buddy)
  */
 void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count) 
 { 
+
 	while (page_count > 0) {
 		// Try and group together as many free pages as we can, at the highest order that we can
 		order_t order = LAST_ORDER;
@@ -262,6 +263,10 @@ void page_allocator_buddy::insert_free_pages(pfn_t range_start, u64 page_count)
 		// find the appropriate order
 		while (order > 0 && (!block_aligned(order, range_start) || (1 << order) > page_count)) {
 			order--;
+		}
+
+		if (is_overlapping(order, range_start)) {
+			panic("Overlapping memory");
 		}
 
 		// now the appropriate order has been found, we should assign all the pages that fall into that a block
@@ -337,7 +342,8 @@ page_allocator_error page_allocator_buddy::free_pages(pfn_t range_start, order_t
 
 	u64 page_count = 1 << order;
 
-	if (page_count <= used_pages_ && range_start != INVALID_PFN && block_aligned(order, range_start)) {
+	if (!is_overlapping(order, range_start) && page_count <= used_pages_ && range_start != INVALID_PFN && block_aligned(order, range_start)) {
+
 		insert_free_block(order, range_start);
 		merge_buddies(order, range_start);
 
@@ -357,3 +363,26 @@ page_allocator_error page_allocator_buddy::free_pages(pfn_t range_start, order_t
  * @return page_allocator_stats A structure containing the state of the allocator.
  */
 page_allocator_stats page_allocator_buddy::get_stats() const { return page_allocator_stats{used_pages_, free_pages_}; }
+
+/**
+ * @brief Checks that the current block does not have preexisting PFN's in the free list.
+ */
+bool page_allocator_buddy::is_overlapping(order_t order, pfn_t block_start) {
+	pfn_t block_end = block_start + (1 << order);
+
+	for (order_t current_order = 0; current_order <= LAST_ORDER; current_order++) {
+		u64 page_count = (1 << current_order);
+
+		for (pfn_t current_page = free_list_[current_order]; current_page != INVALID_PFN; current_page = metadata(current_page)->next_free) {
+			if (current_page >= block_end) {
+				break; 
+			}
+
+			if (current_page + page_count > block_start) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
